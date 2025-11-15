@@ -29,15 +29,40 @@
             const [currentUser, setCurrentUser] = useState('');
             const [copied, setCopied] = useState({});
             const [shareableLinks, setShareableLinks] = useState([]);
+            const [drawId, setDrawId] = useState(null);
+            const [loading, setLoading] = useState(true);
 
+            // Charger les données au démarrage
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search);
                 const name = params.get('nom');
-                if (name) {
+                const id = params.get('id');
+                
+                if (name && id) {
                     setCurrentUser(decodeURIComponent(name));
+                    setDrawId(id);
                     setViewMode('participant');
+                    loadDrawData(id);
+                } else {
+                    setLoading(false);
                 }
             }, []);
+
+            const loadDrawData = async (id) => {
+                try {
+                    const result = await window.storage.get(`draw:${id}`, true);
+                    if (result) {
+                        const data = JSON.parse(result.value);
+                        setAssignments(data.assignments);
+                        setParticipants(data.participants);
+                        setIsDrawn(true);
+                    }
+                } catch (error) {
+                    console.error('Erreur de chargement:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
 
             const addParticipant = () => {
                 if (newName.trim() && !participants.includes(newName.trim())) {
@@ -62,7 +87,7 @@
                 return newArray;
             };
 
-            const drawNames = () => {
+            const drawNames = async () => {
                 if (participants.length < 2) {
                     alert('Il faut au moins 2 participants !');
                     return;
@@ -95,15 +120,31 @@
                     receiver: shuffled[index]
                 }));
 
-                setAssignments(newAssignments);
-                setIsDrawn(true);
+                // Générer un ID unique pour ce tirage
+                const newDrawId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+                
+                // Sauvegarder dans le stockage partagé
+                try {
+                    await window.storage.set(`draw:${newDrawId}`, JSON.stringify({
+                        assignments: newAssignments,
+                        participants: participants,
+                        createdAt: new Date().toISOString()
+                    }), true);
 
-                const baseUrl = window.location.origin + window.location.pathname;
-                const links = newAssignments.map(a => ({
-                    name: a.giver,
-                    url: `${baseUrl}?nom=${encodeURIComponent(a.giver)}`
-                }));
-                setShareableLinks(links);
+                    setAssignments(newAssignments);
+                    setIsDrawn(true);
+                    setDrawId(newDrawId);
+
+                    const baseUrl = window.location.origin + window.location.pathname;
+                    const links = newAssignments.map(a => ({
+                        name: a.giver,
+                        url: `${baseUrl}?nom=${encodeURIComponent(a.giver)}&id=${newDrawId}`
+                    }));
+                    setShareableLinks(links);
+                } catch (error) {
+                    alert('Erreur lors de la sauvegarde du tirage. Réessayez !');
+                    console.error(error);
+                }
             };
 
             const copyLink = (name, url) => {
@@ -121,7 +162,18 @@
                 setNewName('');
                 setShareableLinks([]);
                 setCopied({});
+                setDrawId(null);
             };
+
+            // Écran de chargement
+            if (loading) {
+                return h('div', { className: 'min-h-screen p-4 flex items-center justify-center' },
+                    h('div', { className: 'text-center' },
+                        h('div', { className: 'text-6xl mb-4 animate-bounce' }, '🎁'),
+                        h('p', { className: 'text-xl text-gray-600' }, 'Chargement...')
+                    )
+                );
+            }
 
             // Mode participant
             if (viewMode === 'participant') {
@@ -232,7 +284,8 @@
                             h('li', null, 'Cliquez sur "Effectuer le tirage"'),
                             h('li', null, 'Copiez et envoyez à chaque ami son lien personnel (par SMS, WhatsApp, email...)'),
                             h('li', null, 'Chaque ami verra uniquement à qui il doit offrir un cadeau !')
-                        )
+                        ),
+                        h('p', { className: 'text-xs text-gray-500 mt-4 italic' }, '⚠️ Note : Les données sont partagées. Ne partagez pas les liens publiquement.')
                     )
                 )
             );
