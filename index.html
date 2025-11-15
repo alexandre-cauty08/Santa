@@ -1,284 +1,244 @@
-import React, { useState, useEffect } from 'react';
-import { Gift, Users, Shuffle, Trash2, Share2, Copy, Check } from 'lucide-react';
-
-export default function SecretSanta() {
-  const [participants, setParticipants] = useState([]);
-  const [newName, setNewName] = useState('');
-  const [assignments, setAssignments] = useState([]);
-  const [isDrawn, setIsDrawn] = useState(false);
-  const [viewMode, setViewMode] = useState('admin');
-  const [currentUser, setCurrentUser] = useState('');
-  const [copied, setCopied] = useState({});
-  const [shareableLinks, setShareableLinks] = useState([]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const name = params.get('nom');
-    if (name) {
-      setCurrentUser(decodeURIComponent(name));
-      setViewMode('participant');
-    }
-  }, []);
-
-  const addParticipant = () => {
-    if (newName.trim() && !participants.includes(newName.trim())) {
-      setParticipants([...participants, newName.trim()]);
-      setNewName('');
-    }
-  };
-
-  const removeParticipant = (name) => {
-    setParticipants(participants.filter(p => p !== name));
-    setIsDrawn(false);
-    setAssignments([]);
-    setShareableLinks([]);
-  };
-
-  const shuffleArray = (array) => {
-    const newArray = [...array];
-    for (let i = newArray.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-    }
-    return newArray;
-  };
-
-  const drawNames = () => {
-    if (participants.length < 2) {
-      alert('Il faut au moins 2 participants !');
-      return;
-    }
-
-    let valid = false;
-    let shuffled = [];
-    let attempts = 0;
-    const maxAttempts = 100;
-
-    while (!valid && attempts < maxAttempts) {
-      shuffled = shuffleArray(participants);
-      valid = true;
-      for (let i = 0; i < participants.length; i++) {
-        if (participants[i] === shuffled[i]) {
-          valid = false;
-          break;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Santa - Tirage au Sort</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
-      }
-      attempts++;
-    }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-red-50 to-green-50 min-h-screen">
+    <div id="app"></div>
 
-    if (!valid) {
-      alert('Impossible de créer un tirage valide. Réessayez !');
-      return;
-    }
+    <script>
+        const { createElement: h, useState, useEffect } = React;
 
-    const newAssignments = participants.map((giver, index) => ({
-      giver,
-      receiver: shuffled[index]
-    }));
+        function SecretSanta() {
+            const [participants, setParticipants] = useState([]);
+            const [newName, setNewName] = useState('');
+            const [assignments, setAssignments] = useState([]);
+            const [isDrawn, setIsDrawn] = useState(false);
+            const [viewMode, setViewMode] = useState('admin');
+            const [currentUser, setCurrentUser] = useState('');
+            const [copied, setCopied] = useState({});
+            const [shareableLinks, setShareableLinks] = useState([]);
 
-    setAssignments(newAssignments);
-    setIsDrawn(true);
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const name = params.get('nom');
+                if (name) {
+                    setCurrentUser(decodeURIComponent(name));
+                    setViewMode('participant');
+                }
+            }, []);
 
-    const baseUrl = window.location.origin + window.location.pathname;
-    const links = newAssignments.map(a => ({
-      name: a.giver,
-      url: `${baseUrl}?nom=${encodeURIComponent(a.giver)}`
-    }));
-    setShareableLinks(links);
-  };
+            const addParticipant = () => {
+                if (newName.trim() && !participants.includes(newName.trim())) {
+                    setParticipants([...participants, newName.trim()]);
+                    setNewName('');
+                }
+            };
 
-  const copyLink = (name, url) => {
-    navigator.clipboard.writeText(url);
-    setCopied({ ...copied, [name]: true });
-    setTimeout(() => {
-      setCopied({ ...copied, [name]: false });
-    }, 2000);
-  };
+            const removeParticipant = (name) => {
+                setParticipants(participants.filter(p => p !== name));
+                setIsDrawn(false);
+                setAssignments([]);
+                setShareableLinks([]);
+            };
 
-  const reset = () => {
-    setParticipants([]);
-    setAssignments([]);
-    setIsDrawn(false);
-    setNewName('');
-    setShareableLinks([]);
-    setCopied({});
-  };
+            const shuffleArray = (array) => {
+                const newArray = [...array];
+                for (let i = newArray.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+                }
+                return newArray;
+            };
 
-  // Mode participant - affichage simplifié
-  if (viewMode === 'participant') {
-    const userAssignment = assignments.find(a => a.giver === currentUser);
-    
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-green-50 p-4 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
-          <div className="text-center mb-6">
-            <Gift className="text-red-600 mx-auto mb-4" size={48} />
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Secret Santa 🎅</h1>
-            <p className="text-xl text-gray-600">Bonjour {currentUser} !</p>
-          </div>
+            const drawNames = () => {
+                if (participants.length < 2) {
+                    alert('Il faut au moins 2 participants !');
+                    return;
+                }
 
-          {userAssignment ? (
-            <div className="bg-gradient-to-r from-red-50 to-green-50 border-2 border-red-200 rounded-lg p-6 text-center">
-              <p className="text-gray-700 mb-4 text-lg">Tu dois offrir un cadeau à :</p>
-              <p className="text-3xl font-bold text-red-600 mb-4">
-                🎁 {userAssignment.receiver} 🎁
-              </p>
-              <p className="text-sm text-gray-600 italic">
-                Psst... garde le secret jusqu'à l'échange ! 🤫
-              </p>
-            </div>
-          ) : (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-              <p className="text-yellow-800">
-                Aucune attribution trouvée pour ce nom. Vérifie ton lien !
-              </p>
-            </div>
-          )}
+                let valid = false;
+                let shuffled = [];
+                let attempts = 0;
+                const maxAttempts = 100;
 
-          <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Joyeux Noël ! 🎄✨</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+                while (!valid && attempts < maxAttempts) {
+                    shuffled = shuffleArray(participants);
+                    valid = true;
+                    for (let i = 0; i < participants.length; i++) {
+                        if (participants[i] === shuffled[i]) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
 
-  // Mode admin - gestion du tirage
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-green-50 p-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-xl p-6 mb-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Gift className="text-red-600" size={32} />
-            <h1 className="text-3xl font-bold text-gray-800">Secret Santa - Organisation</h1>
-          </div>
+                if (!valid) {
+                    alert('Impossible de créer un tirage valide. Réessayez !');
+                    return;
+                }
 
-          {!isDrawn ? (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addParticipant()}
-                  placeholder="Nom du participant"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-                <button
-                  onClick={addParticipant}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                >
-                  Ajouter
-                </button>
-              </div>
+                const newAssignments = participants.map((giver, index) => ({
+                    giver,
+                    receiver: shuffled[index]
+                }));
 
-              {participants.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users size={20} className="text-gray-600" />
-                    <h2 className="font-semibold text-gray-700">
-                      Participants ({participants.length})
-                    </h2>
-                  </div>
-                  <div className="space-y-2">
-                    {participants.map((name, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between bg-white p-3 rounded-lg"
-                      >
-                        <span className="text-gray-800">{name}</span>
-                        <button
-                          onClick={() => removeParticipant(name)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                setAssignments(newAssignments);
+                setIsDrawn(true);
 
-              {participants.length >= 2 && (
-                <button
-                  onClick={drawNames}
-                  className="w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold text-lg flex items-center justify-center gap-2"
-                >
-                  <Shuffle size={24} />
-                  Effectuer le tirage !
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Share2 className="text-green-700" size={20} />
-                  <p className="text-green-800 font-bold">
-                    Tirage effectué ! Partagez les liens personnalisés :
-                  </p>
-                </div>
-                <p className="text-green-700 text-sm">
-                  Envoyez à chaque ami son lien unique pour qu'il découvre son attribution.
-                </p>
-              </div>
+                const baseUrl = window.location.origin + window.location.pathname;
+                const links = newAssignments.map(a => ({
+                    name: a.giver,
+                    url: `${baseUrl}?nom=${encodeURIComponent(a.giver)}`
+                }));
+                setShareableLinks(links);
+            };
 
-              <div className="space-y-3">
-                {shareableLinks.map((link, index) => (
-                  <div
-                    key={index}
-                    className="bg-gradient-to-r from-red-50 to-green-50 border border-gray-200 rounded-lg p-4"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-bold text-gray-800 text-lg">🎁 {link.name}</p>
-                      <button
-                        onClick={() => copyLink(link.name, link.url)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                          copied[link.name]
-                            ? 'bg-green-600 text-white'
-                            : 'bg-red-600 hover:bg-red-700 text-white'
-                        }`}
-                      >
-                        {copied[link.name] ? (
-                          <>
-                            <Check size={18} />
-                            Copié !
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={18} />
-                            Copier le lien
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <div className="bg-white rounded p-2 text-xs text-gray-600 break-all font-mono">
-                      {link.url}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            const copyLink = (name, url) => {
+                navigator.clipboard.writeText(url);
+                setCopied({ ...copied, [name]: true });
+                setTimeout(() => {
+                    setCopied({ ...copied, [name]: false });
+                }, 2000);
+            };
 
-              <button
-                onClick={reset}
-                className="w-full py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-              >
-                Nouveau tirage
-              </button>
-            </div>
-          )}
-        </div>
+            const reset = () => {
+                setParticipants([]);
+                setAssignments([]);
+                setIsDrawn(false);
+                setNewName('');
+                setShareableLinks([]);
+                setCopied({});
+            };
 
-        <div className="bg-white rounded-lg shadow-xl p-6">
-          <h2 className="font-bold text-gray-800 mb-3">📋 Comment ça marche ?</h2>
-          <ol className="list-decimal list-inside space-y-2 text-gray-700">
-            <li>Ajoutez tous les participants (minimum 2 personnes)</li>
-            <li>Cliquez sur "Effectuer le tirage"</li>
-            <li>Copiez et envoyez à chaque ami son lien personnel (par SMS, WhatsApp, email...)</li>
-            <li>Chaque ami verra uniquement à qui il doit offrir un cadeau !</li>
-          </ol>
-        </div>
-      </div>
-    </div>
-  );
-}
+            // Mode participant
+            if (viewMode === 'participant') {
+                const userAssignment = assignments.find(a => a.giver === currentUser);
+                
+                return h('div', { className: 'min-h-screen p-4 flex items-center justify-center' },
+                    h('div', { className: 'max-w-md w-full bg-white rounded-lg shadow-xl p-8' },
+                        h('div', { className: 'text-center mb-6' },
+                            h('div', { className: 'text-6xl mb-4' }, '🎁'),
+                            h('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, 'Secret Santa 🎅'),
+                            h('p', { className: 'text-xl text-gray-600' }, `Bonjour ${currentUser} !`)
+                        ),
+                        userAssignment ? 
+                            h('div', { className: 'bg-gradient-to-r from-red-50 to-green-50 border-2 border-red-200 rounded-lg p-6 text-center' },
+                                h('p', { className: 'text-gray-700 mb-4 text-lg' }, 'Tu dois offrir un cadeau à :'),
+                                h('p', { className: 'text-3xl font-bold text-red-600 mb-4' }, `🎁 ${userAssignment.receiver} 🎁`),
+                                h('p', { className: 'text-sm text-gray-600 italic' }, 'Psst... garde le secret jusqu\'à l\'échange ! 🤫')
+                            ) :
+                            h('div', { className: 'bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center' },
+                                h('p', { className: 'text-yellow-800' }, 'Aucune attribution trouvée pour ce nom. Vérifie ton lien !')
+                            ),
+                        h('div', { className: 'mt-6 text-center text-sm text-gray-500' },
+                            h('p', null, 'Joyeux Noël ! 🎄✨')
+                        )
+                    )
+                );
+            }
+
+            // Mode admin
+            return h('div', { className: 'min-h-screen p-4' },
+                h('div', { className: 'max-w-2xl mx-auto' },
+                    h('div', { className: 'bg-white rounded-lg shadow-xl p-6 mb-6' },
+                        h('div', { className: 'flex items-center gap-3 mb-6' },
+                            h('div', { className: 'text-4xl' }, '🎁'),
+                            h('h1', { className: 'text-3xl font-bold text-gray-800' }, 'Secret Santa - Organisation')
+                        ),
+                        !isDrawn ?
+                            h('div', { className: 'space-y-4' },
+                                h('div', { className: 'flex gap-2' },
+                                    h('input', {
+                                        type: 'text',
+                                        value: newName,
+                                        onChange: (e) => setNewName(e.target.value),
+                                        onKeyPress: (e) => e.key === 'Enter' && addParticipant(),
+                                        placeholder: 'Nom du participant',
+                                        className: 'flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500'
+                                    }),
+                                    h('button', {
+                                        onClick: addParticipant,
+                                        className: 'px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium'
+                                    }, 'Ajouter')
+                                ),
+                                participants.length > 0 &&
+                                    h('div', { className: 'bg-gray-50 rounded-lg p-4' },
+                                        h('div', { className: 'flex items-center gap-2 mb-3' },
+                                            h('span', { className: 'text-xl' }, '👥'),
+                                            h('h2', { className: 'font-semibold text-gray-700' }, `Participants (${participants.length})`)
+                                        ),
+                                        h('div', { className: 'space-y-2' },
+                                            participants.map((name, index) =>
+                                                h('div', { key: index, className: 'flex items-center justify-between bg-white p-3 rounded-lg' },
+                                                    h('span', { className: 'text-gray-800' }, name),
+                                                    h('button', {
+                                                        onClick: () => removeParticipant(name),
+                                                        className: 'text-red-500 hover:text-red-700 transition-colors text-xl'
+                                                    }, '🗑️')
+                                                )
+                                            )
+                                        )
+                                    ),
+                                participants.length >= 2 &&
+                                    h('button', {
+                                        onClick: drawNames,
+                                        className: 'w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold text-lg'
+                                    }, '🎲 Effectuer le tirage !')
+                            ) :
+                            h('div', { className: 'space-y-4' },
+                                h('div', { className: 'bg-green-50 border border-green-200 rounded-lg p-4 mb-4' },
+                                    h('p', { className: 'text-green-800 font-bold mb-2' }, '✅ Tirage effectué ! Partagez les liens personnalisés :'),
+                                    h('p', { className: 'text-green-700 text-sm' }, 'Envoyez à chaque ami son lien unique pour qu\'il découvre son attribution.')
+                                ),
+                                h('div', { className: 'space-y-3' },
+                                    shareableLinks.map((link, index) =>
+                                        h('div', { key: index, className: 'bg-gradient-to-r from-red-50 to-green-50 border border-gray-200 rounded-lg p-4' },
+                                            h('div', { className: 'flex items-center justify-between mb-2' },
+                                                h('p', { className: 'font-bold text-gray-800 text-lg' }, `🎁 ${link.name}`),
+                                                h('button', {
+                                                    onClick: () => copyLink(link.name, link.url),
+                                                    className: `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                                                        copied[link.name] ? 'bg-green-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white'
+                                                    }`
+                                                }, copied[link.name] ? '✓ Copié !' : '📋 Copier le lien')
+                                            ),
+                                            h('div', { className: 'bg-white rounded p-2 text-xs text-gray-600 break-all font-mono' }, link.url)
+                                        )
+                                    )
+                                ),
+                                h('button', {
+                                    onClick: reset,
+                                    className: 'w-full py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium'
+                                }, 'Nouveau tirage')
+                            )
+                    ),
+                    h('div', { className: 'bg-white rounded-lg shadow-xl p-6' },
+                        h('h2', { className: 'font-bold text-gray-800 mb-3' }, '📋 Comment ça marche ?'),
+                        h('ol', { className: 'list-decimal list-inside space-y-2 text-gray-700' },
+                            h('li', null, 'Ajoutez tous les participants (minimum 2 personnes)'),
+                            h('li', null, 'Cliquez sur "Effectuer le tirage"'),
+                            h('li', null, 'Copiez et envoyez à chaque ami son lien personnel (par SMS, WhatsApp, email...)'),
+                            h('li', null, 'Chaque ami verra uniquement à qui il doit offrir un cadeau !')
+                        )
+                    )
+                )
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('app'));
+        root.render(React.createElement(SecretSanta));
+    </script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+</body>
+</html>
