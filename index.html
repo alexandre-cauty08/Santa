@@ -1,298 +1,224 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secret Santa - Tirage au Sort</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+import React, { useState } from 'react';
+import { Gift, Users, Shuffle, Trash2, Eye, EyeOff } from 'lucide-react';
+
+export default function SecretSanta() {
+  const [participants, setParticipants] = useState([]);
+  const [newName, setNewName] = useState('');
+  const [assignments, setAssignments] = useState([]);
+  const [revealed, setRevealed] = useState({});
+  const [isDrawn, setIsDrawn] = useState(false);
+
+  const addParticipant = () => {
+    if (newName.trim() && !participants.includes(newName.trim())) {
+      setParticipants([...participants, newName.trim()]);
+      setNewName('');
+    }
+  };
+
+  const removeParticipant = (name) => {
+    setParticipants(participants.filter(p => p !== name));
+    setIsDrawn(false);
+    setAssignments([]);
+    setRevealed({});
+  };
+
+  const shuffleArray = (array) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
+  const drawNames = () => {
+    if (participants.length < 2) {
+      alert('Il faut au moins 2 participants !');
+      return;
+    }
+
+    let valid = false;
+    let shuffled = [];
+    let attempts = 0;
+    const maxAttempts = 100;
+
+    while (!valid && attempts < maxAttempts) {
+      shuffled = shuffleArray(participants);
+      valid = true;
+      for (let i = 0; i < participants.length; i++) {
+        if (participants[i] === shuffled[i]) {
+          valid = false;
+          break;
         }
-    </style>
-</head>
-<body class="bg-gradient-to-br from-red-50 to-green-50 min-h-screen">
-    <div id="app"></div>
+      }
+      attempts++;
+    }
 
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    if (!valid) {
+      alert('Impossible de créer un tirage valide. Réessayez !');
+      return;
+    }
 
-    <script>
-        const { createElement: h, useState, useEffect } = React;
+    const newAssignments = participants.map((giver, index) => ({
+      giver,
+      receiver: shuffled[index]
+    }));
 
-        function SecretSanta() {
-            const [participants, setParticipants] = useState([]);
-            const [newName, setNewName] = useState('');
-            const [assignments, setAssignments] = useState([]);
-            const [isDrawn, setIsDrawn] = useState(false);
-            const [viewMode, setViewMode] = useState('admin');
-            const [currentUser, setCurrentUser] = useState('');
-            const [copied, setCopied] = useState({});
-            const [shareableLinks, setShareableLinks] = useState([]);
-            const [drawId, setDrawId] = useState(null);
-            const [loading, setLoading] = useState(true);
+    setAssignments(newAssignments);
+    setIsDrawn(true);
+    setRevealed({});
+  };
 
-            // Charger les données au démarrage
-            useEffect(() => {
-                const params = new URLSearchParams(window.location.search);
-                const name = params.get('nom');
-                const id = params.get('id');
-                
-                if (name && id) {
-                    setCurrentUser(decodeURIComponent(name));
-                    setDrawId(id);
-                    setViewMode('participant');
-                    loadDrawData(id);
-                } else {
-                    setLoading(false);
-                }
-            }, []);
+  const toggleReveal = (giver) => {
+    setRevealed(prev => ({
+      ...prev,
+      [giver]: !prev[giver]
+    }));
+  };
 
-            const loadDrawData = async (id) => {
-                try {
-                    const result = await window.storage.get(`draw:${id}`, true);
-                    if (result) {
-                        const data = JSON.parse(result.value);
-                        setAssignments(data.assignments);
-                        setParticipants(data.participants);
-                        setIsDrawn(true);
-                    }
-                } catch (error) {
-                    console.error('Erreur de chargement:', error);
-                } finally {
-                    setLoading(false);
-                }
-            };
+  const reset = () => {
+    setParticipants([]);
+    setAssignments([]);
+    setRevealed({});
+    setIsDrawn(false);
+    setNewName('');
+  };
 
-            const addParticipant = () => {
-                if (newName.trim() && !participants.includes(newName.trim())) {
-                    setParticipants([...participants, newName.trim()]);
-                    setNewName('');
-                }
-            };
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-green-50 p-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow-xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Gift className="text-red-600" size={32} />
+            <h1 className="text-3xl font-bold text-gray-800">Secret Santa</h1>
+          </div>
 
-            const removeParticipant = (name) => {
-                setParticipants(participants.filter(p => p !== name));
-                setIsDrawn(false);
-                setAssignments([]);
-                setShareableLinks([]);
-            };
+          {!isDrawn ? (
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addParticipant()}
+                  placeholder="Nom du participant"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+                <button
+                  onClick={addParticipant}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  Ajouter
+                </button>
+              </div>
 
-            const shuffleArray = (array) => {
-                const newArray = [...array];
-                for (let i = newArray.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-                }
-                return newArray;
-            };
+              {participants.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users size={20} className="text-gray-600" />
+                    <h2 className="font-semibold text-gray-700">
+                      Participants ({participants.length})
+                    </h2>
+                  </div>
+                  <div className="space-y-2">
+                    {participants.map((name, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-white p-3 rounded-lg"
+                      >
+                        <span className="text-gray-800">{name}</span>
+                        <button
+                          onClick={() => removeParticipant(name)}
+                          className="text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            const drawNames = async () => {
-                if (participants.length < 2) {
-                    alert('Il faut au moins 2 participants !');
-                    return;
-                }
+              {participants.length >= 2 && (
+                <button
+                  onClick={drawNames}
+                  className="w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold text-lg flex items-center justify-center gap-2"
+                >
+                  <Shuffle size={24} />
+                  Effectuer le tirage !
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <p className="text-green-800 font-medium text-center">
+                  ✨ Le tirage a été effectué ! Chaque participant peut maintenant révéler son attribution.
+                </p>
+              </div>
 
-                let valid = false;
-                let shuffled = [];
-                let attempts = 0;
-                const maxAttempts = 100;
+              <div className="space-y-3">
+                {assignments.map((assignment, index) => (
+                  <div
+                    key={index}
+                    className="bg-gradient-to-r from-red-50 to-green-50 border border-gray-200 rounded-lg p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800 mb-2">
+                          {assignment.giver}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          {revealed[assignment.giver] ? (
+                            <p className="text-lg text-red-600 font-bold">
+                              🎁 offre un cadeau à → {assignment.receiver}
+                            </p>
+                          ) : (
+                            <p className="text-gray-500 italic">
+                              Cliquez pour révéler votre attribution
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleReveal(assignment.giver)}
+                        className={`p-3 rounded-lg transition-colors ${
+                          revealed[assignment.giver]
+                            ? 'bg-red-600 hover:bg-red-700 text-white'
+                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                        }`}
+                      >
+                        {revealed[assignment.giver] ? (
+                          <Eye size={20} />
+                        ) : (
+                          <EyeOff size={20} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                while (!valid && attempts < maxAttempts) {
-                    shuffled = shuffleArray(participants);
-                    valid = true;
-                    for (let i = 0; i < participants.length; i++) {
-                        if (participants[i] === shuffled[i]) {
-                            valid = false;
-                            break;
-                        }
-                    }
-                    attempts++;
-                }
+              <button
+                onClick={reset}
+                className="w-full py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              >
+                Nouveau tirage
+              </button>
+            </div>
+          )}
+        </div>
 
-                if (!valid) {
-                    alert('Impossible de créer un tirage valide. Réessayez !');
-                    return;
-                }
-
-                const newAssignments = participants.map((giver, index) => ({
-                    giver,
-                    receiver: shuffled[index]
-                }));
-
-                // Générer un ID unique pour ce tirage
-                const newDrawId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-                
-                // Sauvegarder dans le stockage partagé
-                try {
-                    await window.storage.set(`draw:${newDrawId}`, JSON.stringify({
-                        assignments: newAssignments,
-                        participants: participants,
-                        createdAt: new Date().toISOString()
-                    }), true);
-
-                    setAssignments(newAssignments);
-                    setIsDrawn(true);
-                    setDrawId(newDrawId);
-
-                    const baseUrl = window.location.origin + window.location.pathname;
-                    const links = newAssignments.map(a => ({
-                        name: a.giver,
-                        url: `${baseUrl}?nom=${encodeURIComponent(a.giver)}&id=${newDrawId}`
-                    }));
-                    setShareableLinks(links);
-                } catch (error) {
-                    alert('Erreur lors de la sauvegarde du tirage. Réessayez !');
-                    console.error(error);
-                }
-            };
-
-            const copyLink = (name, url) => {
-                navigator.clipboard.writeText(url);
-                setCopied({ ...copied, [name]: true });
-                setTimeout(() => {
-                    setCopied({ ...copied, [name]: false });
-                }, 2000);
-            };
-
-            const reset = () => {
-                setParticipants([]);
-                setAssignments([]);
-                setIsDrawn(false);
-                setNewName('');
-                setShareableLinks([]);
-                setCopied({});
-                setDrawId(null);
-            };
-
-            // Écran de chargement
-            if (loading) {
-                return h('div', { className: 'min-h-screen p-4 flex items-center justify-center' },
-                    h('div', { className: 'text-center' },
-                        h('div', { className: 'text-6xl mb-4 animate-bounce' }, '🎁'),
-                        h('p', { className: 'text-xl text-gray-600' }, 'Chargement...')
-                    )
-                );
-            }
-
-            // Mode participant
-            if (viewMode === 'participant') {
-                const userAssignment = assignments.find(a => a.giver === currentUser);
-                
-                return h('div', { className: 'min-h-screen p-4 flex items-center justify-center' },
-                    h('div', { className: 'max-w-md w-full bg-white rounded-lg shadow-xl p-8' },
-                        h('div', { className: 'text-center mb-6' },
-                            h('div', { className: 'text-6xl mb-4' }, '🎁'),
-                            h('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, 'Secret Santa 🎅'),
-                            h('p', { className: 'text-xl text-gray-600' }, `Bonjour ${currentUser} !`)
-                        ),
-                        userAssignment ? 
-                            h('div', { className: 'bg-gradient-to-r from-red-50 to-green-50 border-2 border-red-200 rounded-lg p-6 text-center' },
-                                h('p', { className: 'text-gray-700 mb-4 text-lg' }, 'Tu dois offrir un cadeau à :'),
-                                h('p', { className: 'text-3xl font-bold text-red-600 mb-4' }, `🎁 ${userAssignment.receiver} 🎁`),
-                                h('p', { className: 'text-sm text-gray-600 italic' }, 'Psst... garde le secret jusqu\'à l\'échange ! 🤫')
-                            ) :
-                            h('div', { className: 'bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center' },
-                                h('p', { className: 'text-yellow-800' }, 'Aucune attribution trouvée pour ce nom. Vérifie ton lien !')
-                            ),
-                        h('div', { className: 'mt-6 text-center text-sm text-gray-500' },
-                            h('p', null, 'Joyeux Noël ! 🎄✨')
-                        )
-                    )
-                );
-            }
-
-            // Mode admin
-            return h('div', { className: 'min-h-screen p-4' },
-                h('div', { className: 'max-w-2xl mx-auto' },
-                    h('div', { className: 'bg-white rounded-lg shadow-xl p-6 mb-6' },
-                        h('div', { className: 'flex items-center gap-3 mb-6' },
-                            h('div', { className: 'text-4xl' }, '🎁'),
-                            h('h1', { className: 'text-3xl font-bold text-gray-800' }, 'Secret Santa - Organisation')
-                        ),
-                        !isDrawn ?
-                            h('div', { className: 'space-y-4' },
-                                h('div', { className: 'flex gap-2' },
-                                    h('input', {
-                                        type: 'text',
-                                        value: newName,
-                                        onChange: (e) => setNewName(e.target.value),
-                                        onKeyPress: (e) => e.key === 'Enter' && addParticipant(),
-                                        placeholder: 'Nom du participant',
-                                        className: 'flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500'
-                                    }),
-                                    h('button', {
-                                        onClick: addParticipant,
-                                        className: 'px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium'
-                                    }, 'Ajouter')
-                                ),
-                                participants.length > 0 &&
-                                    h('div', { className: 'bg-gray-50 rounded-lg p-4' },
-                                        h('div', { className: 'flex items-center gap-2 mb-3' },
-                                            h('span', { className: 'text-xl' }, '👥'),
-                                            h('h2', { className: 'font-semibold text-gray-700' }, `Participants (${participants.length})`)
-                                        ),
-                                        h('div', { className: 'space-y-2' },
-                                            participants.map((name, index) =>
-                                                h('div', { key: index, className: 'flex items-center justify-between bg-white p-3 rounded-lg' },
-                                                    h('span', { className: 'text-gray-800' }, name),
-                                                    h('button', {
-                                                        onClick: () => removeParticipant(name),
-                                                        className: 'text-red-500 hover:text-red-700 transition-colors text-xl'
-                                                    }, '🗑️')
-                                                )
-                                            )
-                                        )
-                                    ),
-                                participants.length >= 2 &&
-                                    h('button', {
-                                        onClick: drawNames,
-                                        className: 'w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold text-lg'
-                                    }, '🎲 Effectuer le tirage !')
-                            ) :
-                            h('div', { className: 'space-y-4' },
-                                h('div', { className: 'bg-green-50 border border-green-200 rounded-lg p-4 mb-4' },
-                                    h('p', { className: 'text-green-800 font-bold mb-2' }, '✅ Tirage effectué ! Partagez les liens personnalisés :'),
-                                    h('p', { className: 'text-green-700 text-sm' }, 'Envoyez à chaque ami son lien unique pour qu\'il découvre son attribution.')
-                                ),
-                                h('div', { className: 'space-y-3' },
-                                    shareableLinks.map((link, index) =>
-                                        h('div', { key: index, className: 'bg-gradient-to-r from-red-50 to-green-50 border border-gray-200 rounded-lg p-4' },
-                                            h('div', { className: 'flex items-center justify-between mb-2' },
-                                                h('p', { className: 'font-bold text-gray-800 text-lg' }, `🎁 ${link.name}`),
-                                                h('button', {
-                                                    onClick: () => copyLink(link.name, link.url),
-                                                    className: `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                                                        copied[link.name] ? 'bg-green-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white'
-                                                    }`
-                                                }, copied[link.name] ? '✓ Copié !' : '📋 Copier le lien')
-                                            ),
-                                            h('div', { className: 'bg-white rounded p-2 text-xs text-gray-600 break-all font-mono' }, link.url)
-                                        )
-                                    )
-                                ),
-                                h('button', {
-                                    onClick: reset,
-                                    className: 'w-full py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium'
-                                }, 'Nouveau tirage')
-                            )
-                    ),
-                    h('div', { className: 'bg-white rounded-lg shadow-xl p-6' },
-                        h('h2', { className: 'font-bold text-gray-800 mb-3' }, '📋 Comment ça marche ?'),
-                        h('ol', { className: 'list-decimal list-inside space-y-2 text-gray-700' },
-                            h('li', null, 'Ajoutez tous les participants (minimum 2 personnes)'),
-                            h('li', null, 'Cliquez sur "Effectuer le tirage"'),
-                            h('li', null, 'Copiez et envoyez à chaque ami son lien personnel (par SMS, WhatsApp, email...)'),
-                            h('li', null, 'Chaque ami verra uniquement à qui il doit offrir un cadeau !')
-                        ),
-                        h('p', { className: 'text-xs text-gray-500 mt-4 italic' }, '⚠️ Note : Les données sont partagées. Ne partagez pas les liens publiquement.')
-                    )
-                )
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('app'));
-        root.render(React.createElement(SecretSanta));
-    </script>
-</body>
-</html>
+        <div className="bg-white rounded-lg shadow-xl p-6">
+          <h2 className="font-bold text-gray-800 mb-3">📋 Comment ça marche ?</h2>
+          <ol className="list-decimal list-inside space-y-2 text-gray-700">
+            <li>Ajoutez tous les participants (minimum 2 personnes)</li>
+            <li>Cliquez sur "Effectuer le tirage"</li>
+            <li>Chaque participant clique sur son nom pour révéler à qui il doit offrir un cadeau</li>
+            <li>Gardez le secret jusqu'à l'échange de cadeaux !</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  );
+}
